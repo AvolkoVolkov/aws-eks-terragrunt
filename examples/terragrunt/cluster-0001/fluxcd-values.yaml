@@ -1,0 +1,82 @@
+installCRDs: true
+policies:
+  create: true
+rbac:
+  create: true
+logLevel: info
+watchAllNamespaces: true
+cli:
+  image: ghcr.io/fluxcd/flux-cli
+  tag: v2.3.0
+helmController:
+  create: true
+  imagePullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  labels:
+    fargate_ready: "true"
+imageAutomationController:
+  create: true
+  imagePullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  labels:
+    fargate_ready: "true"
+imageReflectionController:
+  create: true
+  imagePullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  labels:
+    fargate_ready: "true"
+kustomizeController:
+  create: true
+  imagePullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  labels:
+    fargate_ready: "true"
+notificationController:
+  create: true
+  imagePullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  labels:
+    fargate_ready: "true"
+sourceController:
+  create: true
+  imagePullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 64Mi
+  labels:
+    fargate_ready: "true"
