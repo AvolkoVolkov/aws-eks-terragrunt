@@ -195,6 +195,9 @@ inputs = {
     tags   = local.common_tags.locals.common_tags
   }
   fluxcd = {
+    sync_chart_name    = "flux2-sync"
+    sync_chart_version = "1.14.4"
+    sync_release_name  = "flux2-sync"
     repo_credentials_configuration = {
       type                           = "github_app"
       githubAppID                    = "XXXX"

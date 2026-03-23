@@ -71,51 +71,40 @@ resource "helm_release" "fluxcd" {
   ]
 }
 
-resource "kubernetes_manifest" "git_repository" {
-  count = var.fluxcd.create && var.create && var.fluxcd.git_repository != null ? 1 : 0
-
+resource "helm_release" "fluxcd_sync" {
+  count      = var.fluxcd.create && var.create && var.fluxcd.git_repository != null ? 1 : 0
   depends_on = [helm_release.fluxcd]
 
-  manifest = {
-    apiVersion = "source.toolkit.fluxcd.io/v1"
-    kind       = "GitRepository"
-    metadata = {
-      name      = var.fluxcd.git_repository.name
-      namespace = kubernetes_namespace_v1.fluxcd[0].id
-    }
-    spec = {
-      interval = var.fluxcd.git_repository.interval
-      url      = var.fluxcd.git_repository.url
-      ref = {
-        branch = var.fluxcd.git_repository.branch
-      }
-      secretRef = {
-        name = var.fluxcd.repo_credentials_configuration.secret_name
-      }
-    }
-  }
-}
+  repository = var.fluxcd.chart_repo
+  chart      = var.fluxcd.sync_chart_name
+  version    = var.fluxcd.sync_chart_version
 
-resource "kubernetes_manifest" "kustomization" {
-  count = var.fluxcd.create && var.create && var.fluxcd.git_repository != null ? 1 : 0
-
-  depends_on = [kubernetes_manifest.git_repository]
-
-  manifest = {
-    apiVersion = "kustomize.toolkit.fluxcd.io/v1"
-    kind       = "Kustomization"
-    metadata = {
-      name      = var.fluxcd.git_repository.name
-      namespace = kubernetes_namespace_v1.fluxcd[0].id
-    }
-    spec = {
-      interval = var.fluxcd.git_repository.interval
-      sourceRef = {
-        kind = "GitRepository"
-        name = var.fluxcd.git_repository.name
+  name      = var.fluxcd.sync_release_name
+  namespace = kubernetes_namespace_v1.fluxcd[0].id
+  values = [
+    yamlencode({
+      secret = {
+        create = false
       }
-      path  = var.fluxcd.git_repository.path
-      prune = true
-    }
-  }
+      gitRepository = {
+        spec = {
+          url = var.fluxcd.git_repository.url
+          secretRef = {
+            name = var.fluxcd.repo_credentials_configuration.secret_name
+          }
+          interval = var.fluxcd.git_repository.interval
+          ref = {
+            branch = var.fluxcd.git_repository.branch
+          }
+        }
+      }
+      kustomization = {
+        spec = {
+          interval = var.fluxcd.git_repository.interval
+          path     = var.fluxcd.git_repository.path
+          prune    = true
+        }
+      }
+    })
+  ]
 }
