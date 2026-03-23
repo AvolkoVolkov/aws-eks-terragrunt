@@ -2,22 +2,14 @@ provider "helm" {
   kubernetes = {
     host                   = module.eks[0].cluster_endpoint
     cluster_ca_certificate = base64decode(module.eks[0].cluster_certificate_authority_data)
-    exec = {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      command     = "aws"
-      args        = concat(["eks", "get-token", "--cluster-name", module.eks[0].cluster_name, "--output", "json"], var.fluxcd.extra_command_arg)
-    }
+    token                  = data.aws_eks_cluster_auth.this.token
   }
 }
 
 provider "kubernetes" {
   host                   = module.eks[0].cluster_endpoint
   cluster_ca_certificate = base64decode(module.eks[0].cluster_certificate_authority_data)
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    command     = "aws"
-    args        = concat(["eks", "get-token", "--cluster-name", module.eks[0].cluster_name, "--output", "json"], var.fluxcd.extra_command_arg)
-  }
+  token                  = data.aws_eks_cluster_auth.this.token
 }
 
 resource "kubernetes_namespace_v1" "fluxcd" {
