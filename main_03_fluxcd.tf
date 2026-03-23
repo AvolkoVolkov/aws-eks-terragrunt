@@ -62,7 +62,7 @@ resource "kubernetes_secret_v1" "repository_secret_github_app" {
   }
   data = {
     username = "git"
-    password = "x-access-token:${data.aws_ssm_parameter.github_token.value}"
+    password = "x-access-token:${data.aws_ssm_parameter.github_token[0].value}"
   }
 }
 
