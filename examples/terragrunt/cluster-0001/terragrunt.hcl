@@ -170,6 +170,7 @@ inputs = {
   tags = local.common_tags.locals.common_tags
   karpenter = {
     create_pod_identity_association = true
+    node_iam_role_source_account_condition = false
     node_iam_role_additional_policies = {
       AmazonSSMManagedInstanceCore   = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       ebs_csi_role                   = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy",

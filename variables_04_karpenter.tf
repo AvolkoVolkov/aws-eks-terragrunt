@@ -96,8 +96,9 @@ variable "karpenter" {
     node_iam_role_max_session_duration = optional(number, null)
     node_iam_role_permissions_boundary = optional(string, null)
     node_iam_role_attach_cni_policy    = optional(bool, true)
-    node_iam_role_additional_policies  = optional(map(string), {})
-    node_iam_role_tags                 = optional(map(string), {})
+    node_iam_role_additional_policies      = optional(map(string), {})
+    node_iam_role_source_account_condition = optional(bool, false)
+    node_iam_role_tags                     = optional(map(string), {})
     ################################################################################
     # Access Entry
     ################################################################################

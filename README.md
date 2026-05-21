@@ -102,6 +102,7 @@ module "eks" {
 
   karpenter = {
     create_pod_identity_association = true
+    node_iam_role_source_account_condition = false
     node_iam_role_additional_policies = {
       AmazonSSMManagedInstanceCore   = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
       ebs_csi_role                   = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
@@ -192,6 +193,7 @@ Enable Karpenter for automatic node scaling:
 ```hcl
 karpenter = {
   create_pod_identity_association = true
+  node_iam_role_source_account_condition = false
   node_iam_role_additional_policies = {
     AmazonSSMManagedInstanceCore   = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
     ebs_csi_role                   = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
@@ -201,6 +203,8 @@ karpenter = {
   queue_kms_master_key_id   = "alias/aws/sqs"
 }
 ```
+
+The Karpenter submodule is pinned to `terraform-aws-eks` `v21.20.0`, which already includes `ec2:DescribeInstanceStatus` in the default Karpenter controller IAM policy.
 
 ## Important Notes
 
