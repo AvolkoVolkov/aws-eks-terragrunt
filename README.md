@@ -1,16 +1,13 @@
-# AWS EKS Terraform Module with FluxCD
+# AWS EKS Terraform Module
 
-Terraform module for deploying a production-ready AWS EKS cluster with integrated FluxCD GitOps, Karpenter autoscaling, and AWS Load Balancer Controller.
+Terraform module for deploying a production-ready AWS EKS cluster with Karpenter autoscaling and AWS Load Balancer Controller.
 
 ## Features
 
 - **EKS Cluster**: Fully managed Kubernetes cluster on AWS
-- **FluxCD**: GitOps continuous delivery for Kubernetes
 - **Karpenter**: Kubernetes node autoscaling
 - **AWS Load Balancer Controller**: Native AWS ALB/NLB integration
 - **Fargate Support**: Serverless Kubernetes pods
-- **GitHub App/SSH Key Integration**: Secure Git repository access
-- **OIDC Authentication**: Optional OIDC configuration support
 
 ## Requirements
 
@@ -35,28 +32,123 @@ module "eks" {
   kubernetes_version = "1.33"
   vpc_id             = "vpc-xxxxx"
   subnet_ids         = ["subnet-xxxxx", "subnet-yyyyy"]
+}
+```
 
-  fluxcd = {
-    repo_credentials_configuration = {
-      type                           = "github_app"
-      githubAppID                    = "12345"
-      githubAppInstallationID        = "67890"
-      repo_url                       = "https://github.com/myorg/k8s-infra.git"
-      param_store_repository_ssk_key = "/path/to/github/token"
-    }
-    git_repository = {
-      name   = "flux-system"
-      url    = "https://github.com/myorg/k8s-infra.git"
-      branch = "main"
-      path   = "clusters/production"
+### Terraform Example
+
+If you want to run this module directly with Terraform, create a small root module and call this repository as a child module.
+
+Example structure:
+
+```bash
+terraform-eks/
+├── versions.tf
+├── main.tf
+└── outputs.tf
+```
+
+`versions.tf`:
+
+```hcl
+terraform {
+  required_version = "~> 1.14"
+
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 6.28"
     }
   }
 }
+
+provider "aws" {
+  region = "eu-central-1"
+}
+```
+
+`main.tf`:
+
+```hcl
+module "eks" {
+  source = "git::https://github.com/AvolkoVolkov/aws-eks-terragrunt.git?ref=1.0.0"
+
+  name               = "my-cluster"
+  kubernetes_version = "1.33"
+
+  vpc_id     = "vpc-xxxxx"
+  subnet_ids = ["subnet-xxxxx", "subnet-yyyyy"]
+
+  eks_managed_node_groups = {
+    default = {
+      ami_type       = "BOTTLEROCKET_ARM_64"
+      instance_types = ["t4g.medium"]
+
+      min_size     = 1
+      max_size     = 3
+      desired_size = 1
+
+      capacity_type = "ON_DEMAND"
+
+      labels = {
+        role = "default"
+      }
+    }
+  }
+
+  aws_lb_resources = {
+    create = true
+  }
+
+  karpenter = {
+    create_pod_identity_association = true
+    node_iam_role_additional_policies = {
+      AmazonSSMManagedInstanceCore   = "arn:aws:iam::aws:policy/AmazonSSMManagedInstanceCore"
+      ebs_csi_role                   = "arn:aws:iam::aws:policy/service-role/AmazonEBSCSIDriverPolicy"
+      AmazonEKSVPCResourceController = "arn:aws:iam::aws:policy/AmazonEKSVPCResourceController"
+    }
+    queue_managed_sse_enabled = false
+    queue_kms_master_key_id   = "alias/aws/sqs"
+  }
+
+  tags = {
+    Environment = "dev"
+    Terraform   = "true"
+  }
+}
+```
+
+`outputs.tf`:
+
+```hcl
+output "cluster_name" {
+  value = module.eks.cluster_name
+}
+
+output "cluster_endpoint" {
+  value = module.eks.cluster_endpoint
+}
+```
+
+Run Terraform:
+
+```bash
+terraform init
+terraform plan
+terraform apply
+```
+
+After the cluster is created, configure `kubectl`:
+
+```bash
+aws eks update-kubeconfig --region eu-central-1 --name my-cluster
 ```
 
 ### Terragrunt Example
 
 See [examples/terragrunt/cluster-0001](./examples/terragrunt/cluster-0001) for a complete Terragrunt configuration.
+
+See [examples/terraform/cluster-0001](./examples/terraform/cluster-0001) for a complete Terraform configuration.
 
 ## Module Components
 
@@ -76,16 +168,7 @@ Deploys AWS Load Balancer Controller for:
 - Network Load Balancer (NLB) services
 - Target Group Binding
 
-### 3. FluxCD (`main_03_fluxcd.tf`)
-
-Installs FluxCD with:
-- Helm chart deployment
-- GitRepository CRD for source control
-- Kustomization CRD for reconciliation
-- SSH key or GitHub App authentication
-- Support for private repositories
-
-### 4. Karpenter (`main_04_karpenter.tf`)
+### 3. Karpenter (`main_04_karpenter.tf`)
 
 Configures Karpenter for:
 - Dynamic node provisioning
@@ -93,79 +176,14 @@ Configures Karpenter for:
 - Pod identity association
 - SQS queue for node lifecycle events
 
-## FluxCD Configuration
-
-### Authentication Methods
-
-#### GitHub App (Recommended)
-
-```hcl
-fluxcd = {
-  repo_credentials_configuration = {
-    type                           = "github_app"
-    githubAppID                    = "123456"
-    githubAppInstallationID        = "789012"
-    repo_url                       = "https://github.com/org/repo.git"
-    param_store_repository_ssk_key = "/path/to/ssm/parameter"
-  }
-}
-```
-
-#### SSH Deploy Key
-
-```hcl
-fluxcd = {
-  repo_credentials_configuration = {
-    type                           = "deploy_key"
-    repo_url                       = "git@github.com:org/repo.git"
-    param_store_repository_ssk_key = "/path/to/ssh/private/key"
-  }
-}
-```
-
-### FluxCD Helm Values
-
-Customize FluxCD deployment in `fluxcd-values.yaml`:
-
-```yaml
-installCRDs: true
-logLevel: info
-watchAllNamespaces: true
-
-helmController:
-  create: true
-  imagePullPolicy: IfNotPresent
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 64Mi
-  labels:
-    fargate_ready: "true"
-```
-
 ## Fargate Configuration
 
 The module supports running workloads on AWS Fargate:
 
 ```hcl
 fargate_profiles = {
-  flux-system = {
-    selectors = [
-      {
-        namespace = "flux-system"
-        labels = {
-          fargate_ready = "true"
-        }
-      }
-    ]
-  }
 }
 ```
-
-Ensure your FluxCD controller pods have the label `fargate_ready: "true"` to run on Fargate.
 
 ## Karpenter Configuration
 
@@ -186,18 +204,13 @@ karpenter = {
 
 ## Important Notes
 
-1. **AWS SSM Parameter Store**: Store sensitive data (SSH keys, GitHub tokens) in AWS Systems Manager Parameter Store
-2. **FluxCD Namespace**: Default namespace is `flux-system`
-3. **Provider Configuration**: The module configures Helm and Kubernetes providers automatically
-4. **Fargate Labels**: Controllers need `fargate_ready: "true"` label to run on Fargate
+1. **Provider Configuration**: The module configures Helm and Kubernetes providers automatically
+2. **Fargate Labels**: Controllers need `fargate_ready: "true"` label to run on Fargate
 
 ## Inputs
 
 ### EKS Variables
 See [variables_01_eks.tf](./variables_01_eks.tf) for detailed EKS cluster configuration options.
-
-### FluxCD Variables
-See [variables_03_fluxcd.tf](./variables_03_fluxcd.tf) for FluxCD configuration options.
 
 ### Karpenter Variables
 See [variables_04_karpenter.tf](./variables_04_karpenter.tf) for Karpenter configuration options.
@@ -221,20 +234,19 @@ The module outputs include:
 
 ```bash
 examples/
+├── terraform/
+│   └── cluster-0001/
+│       ├── README.md                # Terraform example instructions
+│       ├── versions.tf              # Terraform and provider constraints
+│       ├── variables.tf             # Example input variables
+│       ├── main.tf                  # Terraform module configuration
+│       └── outputs.tf               # Example outputs
 └── terragrunt/
     └── cluster-0001/
         ├── terragrunt.hcl           # Main Terragrunt configuration
-        ├── fluxcd-values.yaml       # FluxCD Helm values
         ├── .terraform-version       # Terraform version pin
         └── .terragrunt-version      # Terragrunt version pin
 ```
-
-## Migration from ArgoCD
-
-This module was migrated from ArgoCD to FluxCD. Key differences:
-- FluxCD uses GitRepository + Kustomization instead of Application/AppOfApps pattern
-- Image automation is built into FluxCD (ImageRepository, ImagePolicy, ImageUpdateAutomation)
-- FluxCD has better GitOps-native features and active development
 
 ## License
 

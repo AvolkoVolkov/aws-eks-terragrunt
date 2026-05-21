@@ -129,16 +129,6 @@ inputs = {
         }
       ]
     }
-    flux-system = {
-      selectors = [
-        {
-          namespace = "flux-system"
-          labels = {
-            fargate_ready = "true"
-          }
-        }
-      ]
-    }
     # karpenter = {
     #   selectors = [
     #     {
@@ -193,23 +183,5 @@ inputs = {
   aws_lb_resources = {
     create = true
     tags   = local.common_tags.locals.common_tags
-  }
-  fluxcd = {
-    sync_chart_name    = "flux2-sync"
-    sync_chart_version = "1.14.4"
-    sync_release_name  = "flux2-sync"
-    repo_credentials_configuration = {
-      type                           = "github_app"
-      githubAppID                    = "XXXX"
-      githubAppInstallationID        = "YYYYY"
-      repo_url                       = "https://github.com/${local.account_vars.locals.gh_organization}/devops-k8s-core.git"
-      param_store_repository_ssk_key = "/${local.account_vars.locals.owner}/${local.account_vars.locals.env_name}/infra/shared/secret/K8S-INFRA-DeployKey"
-    }
-    git_repository = {
-      name   = "flux-system"
-      url    = "https://github.com/${local.account_vars.locals.gh_organization}/devops-k8s-core.git"
-      branch = "master"
-      path   = "${local.account_vars.locals.env_name}/${local.cluster_name}"
-    }
   }
 }
